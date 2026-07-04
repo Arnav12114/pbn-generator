@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bone: #faf7f2;
+  --color-ink: #201a17;
+  --color-terracotta: #c4643c;
+  --color-terracotta-deep: #a94f2c;
+  --color-sage: #8a9a7e;
+  --color-ochre: #d9a441;
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-bone);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.soft-gradient {
+  background: linear-gradient(160deg, #faf7f2 0%, #f5ede2 45%, #f0e2d2 100%);
+}
+
+.card {
+  @apply rounded-3xl bg-white shadow-[0_2px_24px_rgba(32,26,23,0.06)] border border-black/5;
+}
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #efe7db 25%, #f7f1e8 50%, #efe7db 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite linear;
+}
