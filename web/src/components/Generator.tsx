@@ -23,6 +23,35 @@ const PROGRESS_STEPS = [
   "Building your printable template…",
 ];
 
+// Downscale in the browser: the converter works at 1000px anyway, and Vercel
+// rejects request bodies over ~4.5MB — this keeps uploads small and fast.
+async function downscaleImage(file: File, maxEdge = 2000): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+  if (scale === 1 && file.size < 3.5 * 1024 * 1024) return file;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error("Could not process this image"))),
+      "image/jpeg",
+      0.92
+    )
+  );
+}
+
+// Vercel/platform errors return empty or non-JSON bodies — never call res.json() blind.
+async function safeJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: `Server error (${res.status}). Please try again.` };
+  }
+}
+
 export default function Generator() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -55,14 +84,17 @@ export default function Generator() {
     setSourcePreview(URL.createObjectURL(file));
     setPhase("uploading");
 
-    const form = new FormData();
-    form.set("image", file);
-    form.set("difficulty", "signature");
     try {
+      const small = await downscaleImage(file);
+      const form = new FormData();
+      form.set("image", small, "photo.jpg");
+      form.set("difficulty", "signature");
       const res = await fetch("/api/generate", { method: "POST", body: form });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Something went wrong");
-      setDesign(json);
+      const json = await safeJson(res);
+      if (!res.ok || typeof json.previewUrl !== "string") {
+        throw new Error(typeof json.error === "string" ? json.error : "Something went wrong");
+      }
+      setDesign(json as { id: string; previewUrl: string });
       setPhase("preview");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");

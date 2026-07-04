@@ -11,6 +11,19 @@ const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp"]);
 type ApiFile = { data: string; mime: string };
 
 export async function POST(req: NextRequest) {
+  try {
+    return await handle(req);
+  } catch (e) {
+    console.error("generate route failed:", e);
+    const msg =
+      e instanceof Error && /BLOB_READ_WRITE_TOKEN/.test(e.message)
+        ? "Storage not configured — connect a Vercel Blob store and redeploy."
+        : "Something went wrong on our side. Please try again.";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+async function handle(req: NextRequest) {
   const apiUrl = process.env.PBN_API_URL;
   if (!apiUrl) return NextResponse.json({ error: "PBN_API_URL not configured" }, { status: 500 });
 
